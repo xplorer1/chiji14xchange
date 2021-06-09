@@ -43,11 +43,11 @@ To run this app, you must have a nodejs of atleast v10.x.
 
         git clone https://github.com/xplorer1/chiji14xchange.git
 
-1.  Change into the cloned app:
+2.  Change into the cloned app:
 
         cd chiji14xchange/
 
-1.  Install depedencies:
+3.  Install depedencies:
 
         npm install
 
@@ -62,8 +62,16 @@ Open `./config.js` in the root path then edit it with your settings. You will ne
 
         node server.js
 
-1.  Make requests to the application at [http://localhost:9000][].
+2.  Make requests to the application at [http://localhost:9000][].
 
-1. API documentation is at https://documenter.getpostman.com/view/13616694/TzeRo9qh
+3. API documentation is at https://documenter.getpostman.com/view/13616694/TzeRo9qh
+
+## Tools used
+
+- NodeJs
+- ExpressJs
+- MongoDb
+- Mongo Atlas for hosting the database
+- Cloudinary for hosting images
 
 [nodejs]: https://nodejs.org/
