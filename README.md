@@ -64,6 +64,6 @@ Open `./config.js` in the root path then edit it with your settings. You will ne
 
 1.  Make requests to the application at [http://localhost:9000][].
 
-1. API documentation is at 
+1. API documentation is at https://documenter.getpostman.com/view/13616694/TzeRo9qh
 
 [nodejs]: https://nodejs.org/

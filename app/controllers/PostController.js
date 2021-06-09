@@ -240,8 +240,7 @@ module.exports = {
         
         try {
 
-            let comments = await PostCommentModel.find({post: req.params.post_id}).exec();
-
+            let comments = await PostCommentModel.find({post: req.params.post_id}).populate("post").exec();
             return res.status(200).json({status: 200, data: comments});
 
         } catch (error) {
@@ -262,7 +261,7 @@ module.exports = {
     getCommentById: async function(req, res) {
         try {
 
-            let comment = await PostCommentModel.findOne({_id: req.params.comment_id}).exec();
+            let comment = await PostCommentModel.findOne({_id: req.params.comment_id, post: req.params.post_id}).populate("post").exec();
             if(!comment) return res.status(404).json({status: 404, message: "Comment not found."});
 
             return res.status(200).json({status: 200, data: comment});
@@ -285,13 +284,15 @@ module.exports = {
      updateComment: async function(req, res) {
         try {
 
-            let comment = await PostCommentModel.findOne({_id: req.params.comment_id}).exec();
+            let comment = await PostCommentModel.findOne({_id: req.params.comment_id, post: req.params.post_id}).exec();
             if(!comment) return res.status(404).json({message: "Comment not found."});
 
             comment.comment = req.body.comment ? req.body.comment : comment.comment;
             comment.last_updated = new Date();
 
             await comment.save();
+
+            return res.status(200).json({status: 200, message: "Comment successfully updated."});
 
         } catch (error) {
             return res.status(500).json({
@@ -311,10 +312,10 @@ module.exports = {
     deleteComment: async function(req, res) {
         try {
 
-            let comment = await PostCommentModel.findOne({_id: req.params.comment_id}).exec();
+            let comment = await PostCommentModel.findOne({_id: req.params.comment_id, post: req.params.post_id}).exec();
             if(!comment) return res.status(404).json({message: "Comment not found."});
 
-            let delete_comment = await PostCommentModel.deleteOne({_id: req.params.comment_id}).exec();
+            let delete_comment = await PostCommentModel.deleteOne({_id: req.params.comment_id, post: req.params.post_id}).exec();
             if(!delete_comment.deletedCount) return res.status(500).json({message: "Unable to delete comment.", status: 500});
 
             return res.status(200).json({status: 200, message: "Comment successfully deleted."});

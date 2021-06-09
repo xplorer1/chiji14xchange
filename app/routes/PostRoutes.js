@@ -19,7 +19,7 @@ router.route('/:post_id/comments')
     .get(PostController.listPostComments)
     .post(PostController.createPostComment)
 
-router.route('/:post_id/comments/comment_id')
+router.route('/:post_id/comments/:comment_id')
     .get(PostController.getCommentById)
     .put(upload.single('post_image'), PostController.updateComment)
     .delete(PostController.deleteComment)
