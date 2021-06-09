@@ -55,7 +55,7 @@ To run this app, you must have a nodejs of atleast v10.x.
 
 Open `./config.js` in the root path then edit it with your settings. You will need:
 
-- A cloudinary credentials for image upload.;
+- Cloudinary credentials for image upload.;
 - Database credentials;
 
 1.  Run the sample with `node` or `nodemon` 
