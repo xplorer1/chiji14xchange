@@ -4,6 +4,16 @@ const PostCommentModel = require('../models/PostCommentModel');
 const cloudinary = require('cloudinary').v2; //for saving our file uploads.
 const config = require('../../config');
 
+const fs = require("fs");
+const util = require("util");
+const unLinkFile = util.promisify(fs.unlink); //for deleting uploaded files after being sent to cloudinary.
+
+cloudinary.config({
+    cloud_name: config.cloudinary.cloud_name,
+    api_key: config.cloudinary.api_key,
+    api_secret: config.cloudinary.api_secret
+});
+
 const imageId = function () {
     return Math.random().toString(36).substr(2, 4);
 };
@@ -18,7 +28,7 @@ module.exports = {
     */
 
     createPost: async function(req, res) {
-        if(!req.body.post_body) return res.status(400).json({status: 400, message: "Post body required."});
+        if(!req.body.post_body || !req.body.post_title) return res.status(400).json({status: 400, message: "Post body and title required."});
 
         try {
 
@@ -40,6 +50,8 @@ module.exports = {
                     async function(error, result) {
                         if(error) return res.status(500).json({message: error.message, status: 500 });
                         runCreatePost(result.secure_url);
+
+                        await unLinkFile(req.file.path);
                     }
                 );
             } else {
@@ -49,6 +61,7 @@ module.exports = {
         } catch (error) {
             return res.status(500).json({
                 message: error.message,
+                error: error,
                 status: 500,
             });
         }
@@ -91,14 +104,14 @@ module.exports = {
         
         try {
 
-            if(req.query) {
+            if(req.query.page && req.query.limit) {
                 let posts = await PostModel.find({}).limit(limit * 1).skip((page - 1) * limit).exec();
                 let count = await PostModel.countDocuments({}).exec();
 
                 return res.status(200).json({data: posts, totalpages: Math.ceil(count / limit), currentpage: page, elements: count});
 
             } else {
-                let posts = await PostModel.find({}).limit(limit * 1).skip((page - 1) * limit).exec();
+                let posts = await PostModel.find({}).exec();
 
                 return res.status(200).json({status: 200, data: posts});
             }
@@ -141,6 +154,8 @@ module.exports = {
                     async function(error, result) {
                         if(error) return res.status(500).json({message: 'Unable to process your request.', error: error });
                         runUpdate(result.secure_url);
+
+                        await unLinkFile(req.file.path);
                     }
                 );
             } else {
