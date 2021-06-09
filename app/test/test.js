@@ -1,31 +1,16 @@
-let chai = require('chai');
-let chaiHttp = require('chai-http');
-let uuid = require('node-uuid');
-let fs = require('fs');
-let path = require('path');
+const chai = require('chai');
+const chaiHttp = require('chai-http');
+const fs = require('fs');
+const path = require('path');
+chai.should();
 
-let server = require('../../server');
-let should = chai.should();
+const server = require('../../server');
 chai.use(chaiHttp);
 
-let PostModel = require('../models/PostModel');
-let UserModel = require('../models/UserModel');
+const PostModel = require('../models/PostModel');
+const PostCommentModel = require('../models/PostCommentModel');
 
-let user_credentials = {
-    "email" : "spartan.scorpion@zetmail.com",
-    "password": "STWV6R$IYS6&%V80D9VL0M"
-};
-
-let authenticated_user;
-let verification_code = uuid.v4().split('').splice(0, 5).join('').toUpperCase();
-let pwd_reset_token = uuid.v4();
-
-describe('User/Auth', () => {
-    before((done) => { //Before each test we empty the database.
-        UserModel.remove({}, (err) => {
-            done();
-        });
-    });
+describe('post/', () => {
 
     before((done) => { //Before each test we empty the posts document.
         PostModel.remove({}, (err) => {
@@ -33,270 +18,45 @@ describe('User/Auth', () => {
         });
     });
 
-    before(done => { //add a default user to the database...test signup.
-        chai
-            .request(server)
-            .post("/api/user/sign_up")
-            .send(user_credentials)
-            .end((err, res) => {
-                if(err) console.log(err.message);
-
-                res.should.have.status(200);
-                res.body.should.be.a('object');
-                res.body.should.have.property('message').eql('Account has been created. Check your mail for verification code.');
-                done();
-            });
-    });
-
-    before((done) => { //We save a specific verification_code so we can test the verify token route
-        UserModel.findOneAndUpdate({email: user_credentials.email}, {$set: {verification_code: verification_code}}, (err) => {
-            if(err) console.log(err.message);
-            done();
-        });
-    });
-
-    before(done => { //then we verify the user's account using the specific token.
-        let payload = {verification_code: verification_code};
-        chai
-            .request(server)
-            .post("/api/auth/verify_code")
-            .send(payload)
-            .end((err, res) => {
-                if(err) console.log(err.message);
-
-                res.should.have.status(200);
-                res.body.should.be.a('object');
-                res.body.should.have.property('message');
-                res.body.should.have.property('message').eql('Activation successful!');
-
-                done();
-            });
-    });
-
-    before(done => { //then we sign the user in and save the token to authenticated requests.
-        chai
-            .request(server)
-            .post("/api/auth/sign_in")
-            .send(user_credentials)
-            .end((err, res) => {
-                if(err) console.log(err.message);
-
-                authenticated_user = res.body.token;
-
-                res.body.should.be.a('object');
-                res.body.should.have.property('token');
-                res.should.have.status(200);
-                done();
-            });
-    });
-
     /*
-    * Test the /GET user route
+    * Test the /post create a post.
     */
 
-    describe('/GET user', () => {
-      it('should GET the details of the logged in user', (done) => { //should return 200 with the user object.
-        chai.request(server)
-            .get('/api/user')
-            .set({ Authorization: `Bearer ${authenticated_user}`})
-            .end((err, res) => {
-                if(err) console.log(err.message);
-
-                res.should.have.status(200);
-                res.body.should.be.a('object');
-                res.body.should.have.property('data');
-                done();
-            });
-        });
-    });
-
-    /*
-    * Test the /POST sign_up route
-    */
-    describe('/POST user sign_up', () => {
-        it('it should not create a user without password field', (done) => {
-            let new_user = {
-                email: "john.doe@dropjar.com"
-            }
-
-        chai.request(server)
-            .post('/api/user/sign_up')
-            .send(new_user)
-            .end((err, res) => { //should return 404 because password is not found.
-                if(err) console.log(err.message);
-
-                res.should.have.status(400);
-                res.body.should.be.a('object');
-                res.body.should.have.property('message');
-                res.body.should.have.property('message').eql('Email and password required.');
-                done();
-            });
-        });
-
-        it('it should create a user ', (done) => {
-            let new_user = {
-                email: "john.doe@dropjar.com",
-                password: "Oeiweitn323IKKw"
-            }
-
-            chai.request(server)
-                .post('/api/user/sign_up')
-                .send(new_user)
-                .end((err, res) => { // a new user should be created succesfully.
-                    if(err) console.log(err.message);
-
-                    res.should.have.status(200);
-                    res.body.should.be.a('object');
-                    res.body.should.have.property('message').eql('Account has been created. Check your mail for verification code.');
-                    done();
-                });
-            });
-    });
-
-    /*
-    * Test the /PUT update user route
-    */
-    describe('/PUT user', () => {
-        it('it should UPDATE a user given the logged in user"s token and user details.', (done) => {
-
-            chai.request(server)
-                .put('/api/user')
-                .set({ Authorization: `Bearer ${authenticated_user}`})
-                .send({email: user_credentials.email, password: "323##@dsdifweDEEs"})
-                .end((err, res) => {
-                    if(err) console.log(err.message);
-
-                    res.should.have.status(200);
-                    res.body.should.be.a('object');
-                    res.body.should.have.property('message').eql('Update was successful');
-                    done();
-                });
-        });
-    });
-
-    /*
-    * Test the /post start password reset route.
-    */
-
-    describe('/POST request password reset', () => {
-        it('it should start the process for reseting a user"s password.', (done) => {
-            let user = {
-                email: user_credentials.email
-            }
-
-            chai.request(server)
-                .post('/api/auth/request_password_reset')
-                .send(user)
-                .end((err, res) => {
-                    if(err) console.log(err.message);
-                
-                    res.should.have.status(200);
-                    res.body.should.be.a('object');
-                    res.body.should.have.property('message');
-                    res.body.should.have.property('message').eql('Please check your email inbox to proceed.');
-
-                    done();
-                });
-            });
-    });
-
-    /*
-    * Save a token in the password_reset_token for us to test the reset password endpoints.
-    */
-
-    beforeEach((done) => { //We save a specific password_reset_token so we can test the verify token route
-        UserModel.findOneAndUpdate({email: user_credentials.email}, {$set: {password_reset_token: pwd_reset_token}}, (err) => {
-            if(err) console.log(err.message);
-
-            done();
-        });
-    });
-
-    /*
-    * Test the /get verify token is still valid route.
-    */
-
-    describe('/POST verify password reset token', () => {
-        it('it should that a password reset token is still valid.', (done) => {
-            console.log("pwd_reset_token vcode: ", pwd_reset_token);
-    
-            chai.request(server)
-                .get('/api/auth/verify_password_reset_token/' + pwd_reset_token)
-                .end((err, res) => {
-                    if(err) console.log(err.message);
-
-                    res.should.have.status(200);
-                    res.body.should.be.a('object');
-                    res.body.should.have.property('message');
-                    res.body.should.have.property('message').eql('Token valid');
-                    done();
-                });
-            });
-    });
-
-    /*
-    * Test the /post actual password reset route.
-    */
-
-    describe('/POST request password reset', () => {
-        it('it should change the password to the new one.', (done) => {
-            let user = {
-                password: "123456",
-                token: pwd_reset_token
-            }
-
-            chai.request(server)
-                .post('/api/auth/change_password')
-                .send(user)
-                .end((err, res) => {
-                    if(err) console.log(err.message);
-
-                    res.should.have.status(200);
-                    res.body.should.be.a('object');
-                    res.body.should.have.property('message');
-                    res.body.should.have.property('message').eql('Password change was successful.');
-                    done();
-                });
-            });
-    });
-
-    /*
-    * Test the /get create post.
-    */
-
-    describe('/POST post create post', () => {
-        it('it should not create a post without at least post_body', (done) => {
+    describe('/POST create post', () => {
+        it('it should not create a post without at least post_body and post_title', (done) => {
             let postbody = {
-                post_body: ""
+                post_body: "",
+                post_title: ""
             }
     
             chai
                 .request(server)
-                .post("/api/post")
-                .set({ Authorization: `Bearer ${authenticated_user}`})
+                .post("/api/v1/posts")
                 .set("Content-Type", "multipart/form-data")
                 .field("post_body", postbody.post_body)
+                .field("post_title", postbody.post_title)
                 .end((err, res) => {
                     if(err) console.log(err.message);
     
                     res.should.have.status(400);
                     res.body.should.be.a('object');
-                    res.body.should.have.property('message').eql('Post body required.');
+                    res.body.should.have.property('message').eql('Post body and title required.');
                     done();
                 });
         });
 
-        it('it should create a post using only post_body ', (done) => {
+        it('it should create a post using only post_body and post_title ', (done) => {
             let postbody = {
+                post_title: "The making of a legend: the Roger and Carolyn story",
                 post_body: "In 1971, Roger and Carolyn Perron move into a farmhouse in Harrisville, Rhode Island, with their five daughters Andrea, Nancy, Christine, Cindy, and April. Their dog Sadie refuses to enter the house, and Nancy and Christine, while playing a game of 'hide and clap', find a boarded-up entrance to the cellar."
             }
     
             chai
                 .request(server)
-                .post("/api/post")
-                .set({ Authorization: `Bearer ${authenticated_user}`})
+                .post("/api/v1/posts")
                 .set("Content-Type", "multipart/form-data")
                 .field("post_body", postbody.post_body)
+                .field("post_title", postbody.post_title)
                 .end((err, res) => {
                     if(err) console.log(err.message);
     
@@ -307,17 +67,18 @@ describe('User/Auth', () => {
                 });
         });
 
-        it('it should create a user using both post_image post_body ', (done) => {
-            let postbody = {
+        it('it should create a post using post_image, post_title and post_body ', (done) => {
+            let new_post = {
+                post_title: "The making of a legend: the Roger and Carolyn story",
                 post_body: "In 1971, Roger and Carolyn Perron move into a farmhouse in Harrisville, Rhode Island, with their five daughters Andrea, Nancy, Christine, Cindy, and April. Their dog Sadie refuses to enter the house, and Nancy and Christine, while playing a game of 'hide and clap', find a boarded-up entrance to the cellar."
             }
     
             chai
                 .request(server)
-                .post("/api/post")
-                .set({ Authorization: `Bearer ${authenticated_user}`})
+                .post("/api/v1/posts")
                 .set("Content-Type", "multipart/form-data")
-                .field("post_body", postbody.post_body)
+                .field("post_body", new_post.post_body)
+                .field("post_title", new_post.post_title)
                 .attach("post_image", path.resolve(__dirname, "../data/upload.jpg"))
                 .end((err, res) => {
                     if(err) console.log(err.message);
@@ -331,60 +92,71 @@ describe('User/Auth', () => {
     });
 
     /*
-    * Test the /get all post route.
+    * Test the /get all posts route.
     */
 
     describe('/GET posts', () => {
         it('it should GET all the posts', (done) => {
-              chai.request(server)
-              .get('/api/post')
-              .set({ Authorization: `Bearer ${authenticated_user}`})
-              .end((err, res) => {
-                  
+            chai.request(server)
+                .get('/api/v1/posts')
+                .end((err, res) => {
+                    if(err) console.log(err.message);
+                    
                     res.should.have.status(200);
                     res.body.should.have.property('data')
                     res.body.data.should.be.a('array');
-                done();
-              });
+                    done();
+                });
         });
     });
 
     /*
-    * Test the /get post by :id route.
+    * Test the /get post by :post_id route.
     */
 
-    describe('/GET/:id post', () => {
-        it('it should GET a post by the given id', (done) => {
-            let new_post = new PostModel({ post_body: "The Lord of the Rings."});
+    describe('/GET/:post_id post', () => {
+        it('it should GET a post by the given post_id', (done) => {
+            let new_post = new PostModel({
+                post_title: "The Friendly Teacher.",
+                post_body: "Again, there’s no right way to write these first posts, but if it feels like you’re having a hard time getting your ideas down, it can help to create an outline first, or make a bullet list of things you want to cover."
+            });
 
             new_post.save((err, post) => {
                 chai.request(server)
-                    .get('/api/post/' + post._id)
-                    .set({ Authorization: `Bearer ${authenticated_user}`})
-                    .send(post)
+                    .get('/api/v1/posts/' + post._id)
                     .end((err, res) => {
-                            res.should.have.status(200);
-                            res.body.should.be.a('object');
-                            res.body.should.have.property('data');
+                        if(err) console.log(err.message);
+
+                        res.should.have.status(200);
+                        res.body.should.be.a('object');
+                        res.body.should.have.property('data');
                         done();
                     });
             });
-  
         });
     });
 
-    describe('/PUT/:id post', () => {
-        it('it should UPDATE a post given the id', (done) => {
-            let new_post = new PostModel({ post_body: "One of the important task which most of the developers ignores ( i used to ignore too ) is writing unit tests for your code."});
+    /*
+    * Test the /put update post by :post_id route.
+    */
+
+    describe('/PUT/:post_id post', () => {
+        it('it should UPDATE a post given the post_id', (done) => {
+            let new_post = new PostModel({ 
+                post_body: "One of the important task which most of the developers ignores ( i used to ignore too ) is writing unit tests for your code.",
+                post_title: "Writing tests"
+            });
 
             new_post.save((err, post) => {
                 chai.request(server)
-                    .put('/api/post/' + post._id)
-                    .set({ Authorization: `Bearer ${authenticated_user}`})
+                    .put('/api/v1/posts/' + post._id)
                     .set("Content-Type", "multipart/form-data")
                     .field("post_body", post.post_body)
+                    .field("post_title", "The in-alinable task of writing tests.")
                     .attach("post_image", path.resolve(__dirname, "../data/upload.jpg"))
                     .end((err, res) => {
+                        if(err) console.log(err.message);
+
                         res.should.have.status(200);
                         res.body.should.be.a('object');
                         res.body.should.have.property('message').eql('Post successfully updated.');
@@ -398,68 +170,181 @@ describe('User/Auth', () => {
     * Test the /delete post route.
     */
 
-    describe('/delete/:id post', () => {
-        it('it should Delete a post by the given id', (done) => {
-            let new_post = new PostModel({ post_body: "The Lord of the Rings"});
+    describe('/delete/:post_id post', () => {
+        it('it should Delete a post by the given post_id', (done) => {
+            let new_post = new PostModel({ post_title: "The Lord of the Rings", post_body: "On the other hand, we denounce with righteous indignation and dislike men who are so beguiled and demoralized by the charms of pleasure of the moment"});
 
             new_post.save((err, post) => {
                 chai.request(server)
-                    .delete('/api/post/' + post._id)
-                    .set({ Authorization: `Bearer ${authenticated_user}`})
-                    .send(post)
+                    .delete('/api/v1/posts/' + post._id)
                     .end((err, res) => {
-                            res.should.have.status(200);
-                            res.body.should.be.a('object');
-                            res.body.should.have.property('message');
+                        if(err) console.log(err.message);
+
+                        res.should.have.status(200);
+                        res.body.should.be.a('object');
+                        res.body.should.have.property('message').eql('Post successfully deleted.');
                         done();
                     });
             });
-  
         });
     });
 
     /*
-    * Test the /delete user account route.
+    * Test the /post create a comment for a post route.
     */
 
-    describe('/Delete delete account.', () => {
-        it('it should delete user"s account.', (done) => {
-    
-            chai.request(server)
-                .delete('/api/user')
-                .set({ Authorization: `Bearer ${authenticated_user}`})
-                .end((err, res) => {
-                    if(err) console.log(err.message);
+    describe('/post create comment.', () => {
+        it('it should create comment for a post.', (done) => {
+            let new_post = new PostModel({ post_title: "The Lord of the Rings", post_body: "On the other hand, we denounce with righteous indignation and dislike men who are so beguiled and demoralized by the charms of pleasure of the moment"});
 
-                    res.should.have.status(200);
-                    res.body.should.be.a('object');
-                    res.body.should.have.property('message');
-                    res.body.should.have.property('message').eql('Account deleted!');
-                    done();
-                });
+            new_post.save((err, post) => {
+                let new_comment = {
+                    post_comment: "So blinded by desire, that they cannot foresee the pain and trouble that are bound to ensue; and equal blame belongs to those who fail in their duty through weakness of will.",
+                    post: post._id
+                };
+
+                chai.request(server)
+                    .post('/api/v1/posts/' + post._id + "/comments")
+                    .send(new_comment)
+                    .end((err, res) => {
+                        if(err) console.log("error: ", err.message);
+
+                        res.should.have.status(200);
+                        res.body.should.be.a('object');
+                        res.body.should.have.property('message').eql('Comment successfully created.');
+                        done();
+                    });
             });
+        });
     });
 
     /*
-    * Test the /get sign out route.
+    * Test the /get all the comments for a post route.
     */
 
-    describe('/GET sign out', () => {
-        it('it should sign the user out.', (done) => {
-    
-            chai.request(server)
-                .get('/api/auth/sign_out')
-                .set({ Authorization: `Bearer ${authenticated_user}`})
-                .end((err, res) => {
-                    if(err) console.log(err.message);
+    describe('/get get comments.', () => {
+        it('it should get comment for a post.', (done) => {
+            let new_post = new PostModel({ post_title: "The Lord of the Rings", post_body: "On the other hand, we denounce with righteous indignation and dislike men who are so beguiled and demoralized by the charms of pleasure of the moment"});
 
-                    res.should.have.status(200);
-                    res.body.should.be.a('object');
-                    res.body.should.have.property('message');
-                    res.body.should.have.property('message').eql('Sign out successful.');
-                    done();
+            new_post.save((err, post) => {
+                chai.request(server)
+                    .get('/api/v1/posts/' + post._id + "/comments")
+                    .end((err, res) => {
+                        if(err) console.log(err.message);
+
+                        res.should.have.status(200);
+                        res.body.should.have.property('data')
+                        res.body.data.should.be.a('array');
+                        done();
+                    });
+                });
+        });
+    });
+
+    /*
+    * Test the /get comment by comment_id and post_id for a post route.
+    */
+
+    describe('/GET/:post_id/comments/:comment_id', () => {
+        it('it should GET a comment by the given post_id and comment_id', (done) => {
+            let new_post = new PostModel({
+                post_title: "The Friendly Teacher.",
+                post_body: "Again, there’s no right way to write these first posts, but if it feels like you’re having a hard time getting your ideas down, it can help to create an outline first, or make a bullet list of things you want to cover."
+            });
+
+            let comment = "So blinded by desire, that they cannot foresee the pain and trouble that are bound to ensue; and equal blame belongs to those who fail in their duty through weakness of will.";
+
+            new_post.save((err, post) => {
+                let new_comment = new PostCommentModel({
+                    comment: comment,
+                    post: post._id
+                });
+
+                new_comment.save((err, saved_comment) => {
+                    chai.request(server)
+                        .get('/api/v1/posts/' + post._id + "/comments/" + saved_comment._id)
+                        .end((err, res) => {
+                            if(err) console.log(err.message);
+
+                            res.should.have.status(200);
+                            res.body.should.be.a('object');
+                            res.body.should.have.property('data');
+                            done();
+                        });
                 });
             });
+        });
+    });
+
+    /*
+    * Test the /put update comment by comment_id and post_id for a post route.
+    */
+
+    describe('/PUT/:post_id/comments/:comment_id', () => {
+        it('it should update a comment by the given post_id and comment_id', (done) => {
+            let new_post = new PostModel({
+                post_title: "The Friendly Teacher.",
+                post_body: "Again, there’s no right way to write these first posts, but if it feels like you’re having a hard time getting your ideas down, it can help to create an outline first, or make a bullet list of things you want to cover."
+            });
+
+            let comment = "So blinded by desire, that they cannot foresee the pain and trouble that are bound to ensue; and equal blame belongs to those who fail in their duty through weakness of will.";
+            let to_be_saved_comment = "In a free hour, when our power of choice is untrammelled and when nothing prevents our being able to do what we like best, every pleasure is to be welcomed and every pain avoided. ";
+
+            new_post.save((err, post) => {
+                let new_comment = new PostCommentModel({
+                    comment: comment,
+                    post: post._id
+                });
+
+                new_comment.save((err, saved_comment) => {
+                    chai.request(server)
+                        .put('/api/v1/posts/' + post._id + "/comments/" + saved_comment._id)
+                        .field("comment", to_be_saved_comment)
+                        .end((err, res) => {
+                            if(err) console.log(err.message);
+
+                            res.should.have.status(200);
+                            res.body.should.be.a('object');
+                            res.body.should.have.property('message');
+                            done();
+                        });
+                });
+            });
+        });
+    });
+
+    /*
+    * Test the /delete delete comment by comment_id and post_id for a post route.
+    */
+
+    describe('/DEL/:post_id/comments/:comment_id', () => {
+        it('it should update a comment by the given post_id and comment_id', (done) => {
+            let new_post = new PostModel({
+                post_title: "The Friendly Teacher.",
+                post_body: "Again, there’s no right way to write these first posts, but if it feels like you’re having a hard time getting your ideas down, it can help to create an outline first, or make a bullet list of things you want to cover."
+            });
+
+            let comment = "So blinded by desire, that they cannot foresee the pain and trouble that are bound to ensue; and equal blame belongs to those who fail in their duty through weakness of will.";
+
+            new_post.save((err, post) => {
+                let new_comment = new PostCommentModel({
+                    comment: comment,
+                    post: post._id
+                });
+
+                new_comment.save((err, saved_comment) => {
+                    chai.request(server)
+                        .del('/api/v1/posts/' + post._id + "/comments/" + saved_comment._id)
+                        .end((err, res) => {
+                            if(err) console.log(err.message);
+                            res.should.have.status(200);
+                            res.body.should.be.a('object');
+                            res.body.should.have.property('message');
+                            done();
+                        });
+                });
+            });
+        });
     });
 
 });

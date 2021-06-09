@@ -99,8 +99,6 @@ module.exports = {
 
     listPosts: async function(req, res) {
         let { page = 1, limit = 10 } = req.query;
-
-        console.log("req.query: ", req.query);
         
         try {
 
@@ -231,7 +229,7 @@ module.exports = {
 
     /**
      * 
-     * @param {post_id} req object.
+     * @param {post_id} req object takes post_id as params.
      * @param {object} res posts object
      * @returns {object} success or error response object.
     */
@@ -253,7 +251,7 @@ module.exports = {
 
     /**
      * 
-     * @param {comment_id} req object takes a comment_id as params.
+     * @param {comment_id} req object takes a comment_id and post_id as params.
      * @param {object} res post object
      * @returns {object} success or error response object.
     */
@@ -276,7 +274,7 @@ module.exports = {
 
     /**
      * 
-     * @param {comment_id} req object takes a comment_id as params.
+     * @param {comment_id} req object takes a comment_id and post_id as params.
      * @param {object} res success message.
      * @returns {object} success or error response object.
     */
@@ -304,7 +302,7 @@ module.exports = {
     
     /**
      * 
-     * @param {comment_id} req object takes a comment_id as params.
+     * @param {comment_id} req object takes a comment_id and post_id as params.
      * @param {object} res success message
      * @returns {object} success or error response object.
      */

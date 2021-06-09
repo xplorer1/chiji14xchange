@@ -66,6 +66,8 @@ Open `./config.js` in the root path then edit it with your settings. You will ne
 
 3. API documentation is at https://documenter.getpostman.com/view/13616694/TzeRo9qh
 
+4.  Run tests with `npm run test` 
+
 ## Tools used
 
 - NodeJs
