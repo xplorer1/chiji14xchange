@@ -192,7 +192,6 @@ describe('post/', () => {
     /*
     * Test the /post create a comment for a post route.
     */
-
     describe('/post create comment.', () => {
         it('it should create comment for a post.', (done) => {
             let new_post = new PostModel({ post_title: "The Lord of the Rings", post_body: "On the other hand, we denounce with righteous indignation and dislike men who are so beguiled and demoralized by the charms of pleasure of the moment"});
